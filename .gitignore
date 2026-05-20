@@ -11,3 +11,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Local Claude Code state
+.claude/
