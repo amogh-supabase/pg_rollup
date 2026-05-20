@@ -204,4 +204,4 @@ For a hands-on walkthrough using the synthetic Grand Exchange dataset, see [exam
 
 ## License
 
-[PostgreSQL License](LICENSE).
+Licensed under the [Apache License, Version 2.0](LICENSE). See [NOTICE](NOTICE) for attribution.

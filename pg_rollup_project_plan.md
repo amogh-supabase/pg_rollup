@@ -422,7 +422,8 @@ than the retention threshold. Current rows are never pruned.
 ```
 pg_rollup/
 |-- README.md
-|-- LICENSE                          (PostgreSQL license)
+|-- LICENSE                          (Apache License 2.0)
+|-- NOTICE                           (attribution)
 |-- CLAUDE.md                        (Claude Code project context)
 |-- pg_rollup_project_plan.md        (this file)
 |-- install.sql                      (concatenates src/ in order)
