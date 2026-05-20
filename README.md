@@ -204,4 +204,4 @@ For a hands-on walkthrough using the synthetic Grand Exchange dataset, see [exam
 
 ## License
 
-PostgreSQL License (TBD — `LICENSE` file pending).
+[PostgreSQL License](LICENSE).
