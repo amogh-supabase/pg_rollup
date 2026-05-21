@@ -39,6 +39,13 @@ DECLARE
     v_partial_bucket timestamptz;     -- bucket containing now(), if it falls in window
     v_bucket_field   text;
     v_new_hwm        timestamptz;
+    -- Use clock_timestamp() rather than now() / transaction_timestamp() so that
+    -- multiple refreshes within the same enclosing transaction (e.g. inside the
+    -- Supabase SQL editor, or wrapped in a BEGIN/COMMIT block) advance the
+    -- version-time clock between calls. Otherwise close-then-insert would try
+    -- to insert a new row whose _version_from collides with an earlier refresh's
+    -- _version_from for the same (bucket, groups), violating uniqueness.
+    v_cutover        timestamptz := clock_timestamp();
 
     v_groups_csv         text := '';
     v_groups_select_csv  text := '';
@@ -126,9 +133,12 @@ BEGIN
       FROM _pg_rollup_new;
 
     -- ---- Close current rows whose value changed or disappeared ----
+    -- $3 = v_cutover (clock_timestamp at refresh start) — both _version_to of
+    -- the closed row and _version_from of the inserted row use this exact value
+    -- so the version timeline is contiguous (and unique within the table).
     EXECUTE format(
       'UPDATE rollup.%I AS v
-         SET _version_to = now(), _is_current = false
+         SET _version_to = $3, _is_current = false
        WHERE v._is_current
          AND v.bucket >= $1 AND v.bucket < $2
          AND (
@@ -142,13 +152,13 @@ BEGIN
            )
          )',
       r.versions_table, v_group_match, v_group_match, v_agg_differs
-    ) USING v_start, v_end_excl;
+    ) USING v_start, v_end_excl, v_cutover;
     GET DIAGNOSTICS v_rows_closed = ROW_COUNT;
 
     -- ---- Insert new versions ----
     EXECUTE format(
-      'INSERT INTO rollup.%I (bucket%s, %s, _is_partial)
-       SELECT n.bucket%s, %s, (n.bucket = $1) AS _is_partial
+      'INSERT INTO rollup.%I (bucket%s, %s, _version_from, _is_partial)
+       SELECT n.bucket%s, %s, $2 AS _version_from, (n.bucket = $1) AS _is_partial
        FROM _pg_rollup_new AS n
        WHERE NOT EXISTS (
          SELECT 1 FROM rollup.%I AS v
@@ -160,7 +170,7 @@ BEGIN
       CASE WHEN v_groups_select_csv = '' THEN '' ELSE ', ' || v_groups_select_csv END,
       v_aliases_select_csv,
       r.versions_table, v_group_match
-    ) USING v_partial_bucket;
+    ) USING v_partial_bucket, v_cutover;
     GET DIAGNOSTICS v_rows_inserted = ROW_COUNT;
 
     DROP TABLE _pg_rollup_new;
@@ -178,7 +188,7 @@ BEGIN
     END IF;
 
     UPDATE rollup._refresh_log
-       SET finished_at  = now(),
+       SET finished_at  = clock_timestamp(),
            status       = 'success',
            rows_scanned = v_rows_scanned,
            rows_inserted= v_rows_inserted,

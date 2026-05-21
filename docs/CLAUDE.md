@@ -6,7 +6,7 @@ aggregation for PostgreSQL 15+. No C extensions. Installable with
 `psql -f install.sql`.
 
 ## Full specification
-Read pg_rollup_project_plan.md for the complete project plan, architecture,
+Read docs/project_plan.md for the complete project plan, architecture,
 and build phases.
 
 ## Project structure

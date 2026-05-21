@@ -424,8 +424,9 @@ pg_rollup/
 |-- README.md
 |-- LICENSE                          (Apache License 2.0)
 |-- NOTICE                           (attribution)
-|-- CLAUDE.md                        (Claude Code project context)
-|-- pg_rollup_project_plan.md        (this file)
+|-- docs/
+|   |-- CLAUDE.md                    (Claude Code project context)
+|   |-- project_plan.md              (this file)
 |-- install.sql                      (concatenates src/ in order)
 |-- uninstall.sql                    (drops schema cascade + pg_cron jobs)
 |-- src/

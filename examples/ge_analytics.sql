@@ -12,8 +12,20 @@
 
 
 -- ── 1. Confirm the setup ─────────────────────────────────────────────────────
-SELECT (SELECT count(*) FROM ge_transactions) AS ge_rows,         -- expect 5000
-       (SELECT count(*) FROM rollup._registry) AS rollups;        -- expect 0 to start
+-- Hard guard: pg_rollup must be installed AND ge_transactions must be loaded.
+-- If anything's missing, the error tells you exactly which file to run.
+DO $$
+BEGIN
+    IF to_regclass('rollup._registry') IS NULL THEN
+        RAISE EXCEPTION 'pg_rollup is not installed. Run "psql ... -f install.sql" first.';
+    END IF;
+    IF to_regclass('public.ge_transactions') IS NULL THEN
+        RAISE EXCEPTION 'ge_transactions table is missing. Run "psql ... -f examples/ge_transactions_example.sql" first to seed the demo dataset.';
+    END IF;
+END $$;
+
+SELECT (SELECT count(*) FROM ge_transactions) AS ge_rows,    -- expect 5000
+       (SELECT count(*) FROM rollup._registry) AS rollups;  -- expect 0 to start
 
 
 -- ── 2. Create a versioned daily rollup ───────────────────────────────────────

@@ -4,18 +4,20 @@ Bi-temporal, versioned, incremental rollups for PostgreSQL. Answers "what does t
 
 **[View the project website](https://amogh-supabase.github.io/pg_rollup/)**
 
-pg_rollup is the anti-extension: pure SQL, no compilation, no superuser, no `CREATE EXTENSION`. Install with `psql -f install.sql`. Every refresh is versioned — old values are closed (not overwritten) and new ones are inserted, so the rollup carries a full audit trail. Query the current truth as a regular view, or replay the rollup at any historical timestamp.
+pg_rollup is the anti-extension: pure SQL, no compilation, no superuser, no `CREATE EXTENSION`. Install with `psql -f install.sql`.
+
+Every refresh is versioned. Old values are closed (not overwritten) and new ones are inserted, so the rollup carries a full audit trail. Query the current truth as a regular view, or replay the rollup at any historical timestamp.
 
 ## Architecture
 
 Each rollup tracks two timelines:
 
-| Timeline               | What it answers              | Object                                | Cost                       |
-|------------------------|------------------------------|---------------------------------------|----------------------------|
-| **As-is** (now)        | "What's true right now?"     | `rollup.<name>` (view)                | Index lookup, free         |
-| **As-was** (then)      | "What did it say at time T?" | `rollup.<name>_at(t)` (generated fn)  | One row per change, ever   |
+| Timeline               | What it answers              | Object                                  | Cost                       |
+|------------------------|------------------------------|-----------------------------------------|----------------------------|
+| **As-is** (now)        | "What's true right now?"     | `rollup.NAME` (view)                    | Index lookup, free         |
+| **As-was** (then)      | "What did it say at time T?" | `rollup.NAME_at(t)` (generated function)| One row per change, ever   |
 
-Every refresh updates the underlying `rollup._<name>_versions` table by closing any current row whose value changed (setting `_version_to = now()`, `_is_current = false`) and inserting a new row. Rows whose values didn't change are left alone — no version churn from no-op refreshes.
+Every refresh updates the underlying `rollup._NAME_versions` table by closing any current row whose value changed (setting `_version_to`, flipping `_is_current` to false) and inserting a new row. Rows whose values didn't change are left alone — no version churn from no-op refreshes.
 
 The lookback window (`bucket_size × 3` by default) catches late-arriving source data automatically. For older targeted rescans, pass `since := ...` to `rollup.refresh()`.
 
@@ -87,7 +89,7 @@ SELECT rollup.refresh('ge_daily_by_category');
 
 ### As-was — point-in-time reconstruction
 
-Every rollup gets a generated `rollup.<name>_at(timestamptz)` function with the same column shape as the view. Passing a historical timestamp replays the rollup exactly as it existed then.
+Every rollup gets a generated `rollup.NAME_at(timestamptz)` function with the same column shape as the view. Passing a historical timestamp replays the rollup exactly as it existed then.
 
 ```sql
 -- What did the rollup show last Wednesday at 9 AM?
@@ -101,7 +103,7 @@ WHERE item_category = 'Weapons';
 
 ### Diff — what changed between two snapshots
 
-`rollup.<name>_diff(time_a, time_b)` returns one row per `(bucket, group)` with paired `_a` / `_b` columns for every aggregate and a `change_type` marker.
+`rollup.NAME_diff(time_a, time_b)` returns one row per `(bucket, group)` with paired `_a` / `_b` columns for every aggregate and a `change_type` marker.
 
 ```sql
 SELECT bucket::date, item_category,
@@ -171,7 +173,7 @@ All configuration lives on the rollup itself, set at `rollup.create()` time:
 |-------------------|-------------------------|------------------------------------------------------------------------|
 | `bucket_size`     | required                | One of: `1 minute`, `1 hour`, `1 day`, `1 week`, `1 month`, `3 months`, `1 year` |
 | `groups`          | `ARRAY[]::text[]`       | Columns to GROUP BY in addition to the time bucket                     |
-| `aggregates`      | required                | Pass-through SQL expressions, each ending with `AS <alias>`            |
+| `aggregates`      | required                | Pass-through SQL expressions, each ending with `AS alias_name`         |
 | `lookback_window` | `bucket_size × 3`       | How far back each refresh re-scans to catch late-arriving data         |
 | `schedule`        | NULL                    | pg_cron expression, e.g. `'*/5 * * * *'`. NULL = refresh manually      |
 
@@ -198,7 +200,7 @@ User-facing views and generated `_at` / `_diff` functions all live in the `rollu
 
 ## Reference
 
-For the full design rationale, build phases, and architecture decisions, see [pg_rollup_project_plan.md](pg_rollup_project_plan.md).
+For the full design rationale, build phases, and architecture decisions, see [docs/project_plan.md](docs/project_plan.md).
 
 For a hands-on walkthrough using the synthetic Grand Exchange dataset, see [examples/ge_analytics.sql](examples/ge_analytics.sql).
 
