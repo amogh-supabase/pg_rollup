@@ -1,3 +1,9 @@
+-- pg_rollup v0.1.0
+-- Versioned incremental rollups for PostgreSQL 15+
+-- https://github.com/amogh-supabase/pg_rollup
+-- Install: psql -f install.sql
+-- Check version: SELECT rollup.version();
+
 -- pg_rollup installer. Run with:  psql "$PGROLLUP_DB" -f install.sql
 -- Idempotent: re-running on an already-installed database is a no-op.
 
@@ -34,6 +40,9 @@ BEGIN;
 
 \echo '== pg_rollup: installing rollup.purge_history()'
 \i src/09_purge.sql
+
+\echo '== pg_rollup: installing rollup.version()'
+\i src/10_version.sql
 
 COMMIT;
 
